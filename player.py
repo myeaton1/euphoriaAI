@@ -47,7 +47,7 @@ class Player:
 			self.workers.sort()
 			self.workers.pop()
 
-	def placeWorker(self, workerN, location):
+	# def placeWorker(self, workerN, location):
 
 
 
