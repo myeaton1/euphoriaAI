@@ -34,6 +34,7 @@ class Game:
 		self.factions.append(dict(num=3,com='bliss',
 			resource=None,isMine=False,mine=0,allegiance=0,
 			starSlots=self.pNum,name='icarite'))
+		self.factions.append(dict(num=4))
 
 		# Initialize Locations, randomize markets
 		self.initLoc()
@@ -69,16 +70,13 @@ class Game:
 
 	def comAllegianceBonus(self,faction):
 		if ((self.p[self.turn].recruits[0] == faction['num']) or
-			((self.p[self.turn].recruits[0] == faction['num']) and
+			((self.p[self.turn].recruits[1] == faction['num']) and
 				(self.p[self.turn].resources['recruit2Active']))):
 
-			if ((faction['allegiance'] >= 2) and (spaceType == 'com')):
-				return 1
-
-			else:
-				return 0	
-		else:
-			return 0
+			if faction['allegiance'] >= 2:
+				return 1	
+		
+		return 0
 
 		
 
@@ -101,7 +99,7 @@ class Game:
 		if reward:
 			# Check maintenance heavy rewards
 			#	(allegiance,stars,worker,artifact)
-			for i in range(len(cost)):
+			for i in range(len(reward)):
 				if reward[i][0] == 'allegiance':
 					self.factions[faction['num']]['allegiance']+=1
 				elif reward[i][0] == 'star':
@@ -118,11 +116,26 @@ class Game:
 
 						self.p[self.turn].resources[dealArt]+=1
 
+						self.checkMoraleCap()
+
+
 				else:
 					self.p[self.turn].resources[reward[i][0]]+=reward[i][1]
 
 				# Make sure knowledge/morale not out of whack
 				self.verifyMoraleKnowledgeRange()
+
+	def checkMoraleCap(self):
+		from random import choice
+		# in case player has too many artifacts, discard down
+		totArt = 0
+		artType = ['bat','book','bear','balloon','glasses','game']
+		for a in artType:
+			totArt += self.p[self.turn].resources[a]
+		while totArt > self.p[self.turn].resources['morale']:
+			# if you have too many artifacts, you must discard one randomly
+			self.p[self.turn].resources[choice(artType)]
+
 
 	def useExclusive(self,faction,locationN,workerVal,cost=None):
 
@@ -167,7 +180,7 @@ class Game:
 					self.locationStars[faction['num']][marketLoc].append(i)	# record that player i has put a star here
 
 			# Turn on market space
-			self.factions[faction['num']][]
+			self.factions[faction['num']][marketN] = True
 
 	def retrieve(self,locations,workerVal,pN,cost=None):
 
@@ -179,7 +192,7 @@ class Game:
 			self.location[facN][locN].remove(workerVal[i])
 			self.locationP[facN][locN].remove(pN[i])
 
-		self.p[self.turn].retrieveWorkers(len(workerVal),cost)
+		self.p[pNum].retrieveWorkers(len(workerVal),cost)
 
 	def workerDrop(self,faction,locationN,workerVal):
 
@@ -238,9 +251,17 @@ class Game:
 			# Mines
 			self.locationCR[i][12] = [[[[facC,1]]],[[[facR,1]],[['artifact',1]]]]
 
+			# Upgraded Mines
+			self.locationCR[i][13] = [[[[facC,1]]],[[[facR,1],['artifact',1]]]]
+
 		# Artifact markets
 		for i in range(4):
-			self.locationCR[i][11] = [[[['artifact',3]]],[[['star',1],['allegiance',1]]]]
+			artType = ['bat','book','bear','balloon','glasses','game']
+			anyThreeArt = list(combinations([['bat',1],['book',1],['bear',1],
+				['balloon',1],['glasses',1],['game',1]],3))
+			for a in artType:
+				anyThreeArt.append([[a,2]])
+			self.locationCR[i][11] = [anyThreeArt,[[['star',1],['allegiance',1]]]]
 
 		# Icarite Markets
 		# Nimbus Loft
@@ -333,33 +354,30 @@ class Game:
 		# Verify morale range
 		if self.p[self.turn].resources['morale'] <= 0:
 			self.p[self.turn].resources['morale'] = 1
-		elif self.p[self.turn].resources['morale'] >= 7
+		elif self.p[self.turn].resources['morale'] >= 7:
 			self.p[self.turn].resources['morale'] = 6
 
 		# Verify knowledge range
 		if self.p[self.turn].resources['knowledge'] <= 0:
 			self.p[self.turn].resources['knowledge'] = 1
-		elif self.p[self.turn].resources['knowledge'] >= 7
+		elif self.p[self.turn].resources['knowledge'] >= 7:
 			self.p[self.turn].resources['knowledge'] = 6
-
-	def adjustMineBonus(self):
-		# use for move function to adjust mine space if allegiance high enough
 
 	def checkRecruitFlip(self):
 		# flip second recruit if mine or allegiance is far enough
-		for i range(3):
+		for i in range(3):
 			if self.factions[i]['allegiance'] >= 8 or self.factions[i]['mine'] >= 7:
 				for j in range(self.pNum):
 					if self.p[j].recruit[1] == i:
-						self.p[j].resources['recruit2Active'=True]
+						self.p[j].resources['recruit2Active']=True
 
 	def checkRecruitStars(self):
 		# put stars on recruits of given faction
 
-		for i range(3):
+		for i in range(3):
 			if self.factions[i]['allegiance'] >= 11:
 				for j in range(self.pNum):
-					for r in range(len(self.p[j].recruit))
+					for r in range(len(self.p[j].recruit)):
 						if self.p[j].recruit[r] == i and (not self.p[j].recruitStar[r]):
 							self.p[j].resources['stars']-=1
 							self.p[j].recruitStar[r] = True
@@ -371,25 +389,248 @@ class Game:
 		for i in self.p:
 			if i.resources['stars'] <= 0:
 				return True
+		return False
 
 	def existsWinner(self):
 		# check if winner or a tie
-
-
+		for i in self.p:
+			if i.resources['stars'] > 0:
+				return True
+		return False
 
 	def winner(self):
+		# declare winner, not generalized.  Only for pNum == 2
+		if p[0].resources['stars'] < p[1].resources['stars']:
+			return 0
+		if p[0].resources['stars'] > p[1].resources['stars']:
+			return 1
+
+	def move(self,moveList):
+		# Turn move list into a move
+
+		factionNum	= moveList[1]
+		locationNum	= moveList[2]
+		costOp		= moveList[3]
+		rewardOp	= moveList[4]
+		costNum 	= 0
+		rewardNum 	= 1
+		workerNum	= moveList[5]
+
+		if moveList[0] == 0:
+			# place a worker
+			if not locationNum == 0:
+				cost = self.locationCR[factionNum][locationNum][costNum][costOp]
+				reward = self.locationCR[factionNum][locationNum][rewardNum][rewardOp]
+
+			if factionNum in [0,1,2,3]:
+				# if normal (not worker gen) space
+				if locationNum == 0:
+					# use commodity market
+					self.useMultiUse(self.factions[factionNum],workerNum)
+				elif locationNum in [1,2,3,4,5,6,7,8]:
+					# use exclusive spots (building markets)
+					self.useExclusive(self.factions[factionNum],
+						locationNum,workerNum,cost)
+				else:
+					# use another market
+					self.useTemp(self.factions[factionNum],
+						locationNum,workerNum,cost,reward)
+
+					if locationNum == 12:
+						self.factions[factionNum]['mine'] += 1
+			
+			elif factionNum == 4:
+				# worker generation
+				cost = self.locationCR[factionNum][locationNum][costNum][costOp]
+				reward = self.locationCR[factionNum][locationNum][rewardNum][rewardOp]
+
+				self.useTemp(self.factions[factionNum],
+					locationNum,workerNum,cost,reward)
+
+		elif moveList[0] == 1:
+			# retrieve worker(s)
+			if costOp == 0:
+				cost = 'morale'
+			elif costOp == 1:
+				cost = 'food'
+			elif costOp == 2:
+				cost = 'bliss'
+
+			fStr	= str(factionNum)
+			lStr	= str(locationNum)
+			wStr	= str(workerNum)
+
+			factionNum	= []
+			locationNum	= []
+			workerNum	= []
+			for i in range(len(fStr)):
+				factionNum.append(int(fStr[i]))
+				locationNum.append(int(lStr[i]))
+				workerNum.append(int(lStr[i]))
+
+			for i in range(len(factionNum)):
+				if i == 0:
+					self.retrieve([factionNum[i],locationNum[i]],
+						workerNum[i],self.turn,cost)
+				else:
+					self.retrieve([factionNum[i],locationNum[i]],
+						workerNum[i],self.turn)
+
+		# Check end of the game
+		if self.isOver():
+			if self.existsWinner():
+				self.winnerP = self.winner()
+
+		# Check worker flipping
+		self.checkRecruitFlip()
+		# Check worker stars
+		self.checkRecruitStars()
+
+		if self.turn == 0:
+			self.turn = 1
+		if self.turn == 1:
+			self.turn = 0
 
 
 
 
+		# may implement moral dilemma later (moveList[0] == 2)
+
+	def legalMoves(self):
+		# Generate list of legal moves for the current player
+		from itertools import chain
+
+		workersOnBoard	= list(chain.from_iterable(list(chain.from_iterable(self.locationP))))
+		costNum			= 0
+		rewardNum 		= 1
+
+		# May either place workers or retrieve workers
+		moveList = []
+		if self.p[self.turn].workers:
+			# may place if you have some active workers
+			for i in range(3):
+				# can always use commodity markets
+				multiUseMove = [0,i,0,0,0,w]
+				moveList.append(multiUseMove)
+
+				for j in [1,2,3,4]:
+					# first market exclusive spaces
+					cost = self.locationCR[i][j][costNum][0][0]
+					market1 = self.factions[i]['market1']
+					if self.p[self.turn].resources[cost[0]] >= cost[1] and not market1:
+						tempMove = [0,i,j,0,0,w]
+						moveList.append(tempMove)
+
+
+				for j in [5,6,7,8]:
+					# second market exclusive spaces
+					cost = self.locationCR[i][j][costNum][0][0]
+					market2 = self.factions[i]['market2']
+					if self.p[self.turn].resources[cost[0]] >= cost[1] and not market2:
+						tempMove = [0,i,j,0,0,w]
+						moveList.append(tempMove)
+
+				# random market 1 (space 9)
+				j = 9
+				costList = self.locationCR[i][j][costNum]
+				rewardList = self.locationCR[i][j][rewardNum]
+				market1 = self.factions[i]['market1']
+				if market1:
+					for cNum in range(len(costList)):
+						if checkCosts(costList[cNum]):
+							for rNum in range(len(rewardList))
+								tempMove = [0,i,j,cNum,rNum,w]
+								moveList.append(tempMove)
+
+				# random market 2 (space 10)
+				j = 10
+				costList = self.locationCR[i][j][costNum]
+				rewardList = self.locationCR[i][j][rewardNum]
+				market2 = self.factions[i]['market2']
+				if market2:
+					for cNum in range(len(costList)):
+						if checkCosts(costList[cNum]):
+							for rNum in range(len(rewardList))
+								tempMove = [0,i,j,cNum,rNum,w]
+								moveList.append(tempMove)
+
+				# artifact market (space 11)
+				j = 11
+				costList = self.locationCR[i][j][costNum]
+				rewardList = self.locationCR[i][j][rewardNum]
+				for cNum in range(len(costList)):
+					if checkCosts(costList[cNum]):
+						for rNum in range(len(rewardList))
+							tempMove = [0,i,j,cNum,rNum,w]
+							moveList.append(tempMove)
+
+				# regular mine
+				j = 12
+				costList = self.locationCR[i][j][costNum]
+				rewardList = self.locationCR[i][j][rewardNum]
+				if not mineCheck(i):
+					for cNum in range(len(costList)):
+						if checkCosts(costList[cNum]):
+							for rNum in range(len(rewardList))
+								tempMove = [0,i,j,cNum,rNum,w]
+								moveList.append(tempMove)
+
+				# upgraded mine
+				j = 13
+				costList = self.locationCR[i][j][costNum]
+				rewardList = self.locationCR[i][j][rewardNum]
+				if mineCheck(i):
+					for cNum in range(len(costList)):
+						if checkCosts(costList[cNum]):
+							for rNum in range(len(rewardList))
+								tempMove = [0,i,j,cNum,rNum,w]
+								moveList.append(tempMove)
 
 
 
-	# def move(self,moveList):
-	# 	# Turn move list into a move
 
-	#def legalMoves(self):
-	#	# Generate list of legal moves for the current player
+			# for w in self.p[self.turn].workers:
+			# 	# can place any active worker
+
+
+
+
+		# if self.turn in workersOnBoard:
+		# 	# may retrieve if you have some workers on the board
+
+		
+
+	def mineCheck(self,factionNum):
+		# check to see if you can use the upgraded mine
+		mine = self.factions[factionNum]['mine']
+		if self.p[self.turn].resources['recruit2Active']:
+			activeRecruits = self.p[self.turn].recruits
+		else:
+			activeRecruits = self.p[self.turn].recruits[0]
+		if (mine >= 5) and (factionNum in activeRecruits):
+			return True
+		return False
+
+	def checkCosts(self,cost):
+		# check if all costs can be paid
+		checker = []
+		resources = dict(energy=0,water=0,food=0,bliss=0,
+			gold=0,stone=0,brick=0,bat=0,book=0,bear=0,
+			balloon=0,glasses=0,game=0)
+		for c in cost:
+			resources[c[0]]+=c[1]
+		for c in cost:
+			if self.p[self.turn].resources[c[0]] >= resources[c[0]]:
+				checker.append(True)
+			else:
+				checker.append(False)
+
+		return all(checker)
+
+
+	# def adjustMineBonus(self):
+	# # use for move function to adjust mine space if allegiance high enough
+	# 	adjust locationCR temporarily to account for bonus
 
 
 
