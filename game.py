@@ -1,12 +1,20 @@
 from player import *
+from pybrain.rl.environments.twoplayergame import TwoPlayerGame
 
-class Game:
+class Game(TwoPlayerGame):
 	def __init__(self):
 		from random import shuffle, randint
 
 		self.pNum = 2
 
+		self.reset()
+
+	def reset(self):
 		self.turn = 0
+
+		self.over = False
+
+		self.turnCounter = 0
 
 		# Deal out moral dilemmas
 		dilemma = ['bat','book','bear','balloon','glasses','game']
@@ -83,14 +91,20 @@ class Game:
 
 	def useTemp(self,faction,locationN,workerVal,cost=None,reward=None):
 
-		if len(self.location[faction['num']][locationN]) == 1:			# if we need to bump, then:
-			facPair = [faction['num'],locationN]					# list of [ faction #, location key #]
-			dieN = self.location[faction['num']][locationN][0]		# list of number of die in that location
-			pN = self.locationP[faction['num']][locationN][0]		# list of player #s
+		# deal with upgraded mines 
+		if locationN == 13:
+			lN = 12
+		else:
+			lN = locationN
 
-			self.retrieve([facPair], [dieN], [pN])
+		if len(self.location[faction['num']][lN]) == 1:			# if we need to bump, then:
+			facPair = [faction['num'],lN]						# list of [ faction #, location key #]
+			dieN = self.location[faction['num']][lN][0]			# list of number of die in that location
+			pN = self.locationP[faction['num']][lN][0]			# list of player #s
 
-		self.workerDrop(faction,locationN,workerVal)					# add new worker die
+			self.retrieve(facPair, dieN, pN)
+
+		self.workerDrop(faction,lN,workerVal)					# add new worker die
 
 		if cost:
 			for i in range(len(cost)):
@@ -102,7 +116,7 @@ class Game:
 			for i in range(len(reward)):
 				if reward[i][0] == 'allegiance':
 					self.factions[faction['num']]['allegiance']+=1
-				elif reward[i][0] == 'star':
+				elif reward[i][0] == 'stars':
 					self.factions[faction['num']]['starSlots']-=1
 					self.p[self.turn].resources[reward[i][0]]-=reward[i][1]
 				elif reward[i][0] == 'worker':
@@ -134,7 +148,10 @@ class Game:
 			totArt += self.p[self.turn].resources[a]
 		while totArt > self.p[self.turn].resources['morale']:
 			# if you have too many artifacts, you must discard one randomly
-			self.p[self.turn].resources[choice(artType)]
+			self.p[self.turn].resources[choice(artType)]-=1
+			totArt = 0
+			for a in artType:
+				totArt += self.p[self.turn].resources[a]
 
 
 	def useExclusive(self,faction,locationN,workerVal,cost=None):
@@ -169,7 +186,7 @@ class Game:
 					dieN = self.location[faction['num']][i][0]	# list of number of die in that location
 					pN = self.locationP[faction['num']][i][0]		# list of player #s
 
-					self.retrieve([facPair], [dieN], [pN])
+					self.retrieve(facPair, dieN, pN)
 
 					checkHelped[pN] = True
 
@@ -183,16 +200,16 @@ class Game:
 			self.factions[faction['num']][marketN] = True
 
 	def retrieve(self,locations,workerVal,pN,cost=None):
+		# retrieve a worker from a space
 
-		for i in range(len(locations)):
-			facN = locations[i][0]
+		facN = locations[0]
 
-			locN = locations[i][1]
+		locN = locations[1]
 
-			self.location[facN][locN].remove(workerVal[i])
-			self.locationP[facN][locN].remove(pN[i])
+		self.location[facN][locN].remove(workerVal)
+		self.locationP[facN][locN].remove(pN)
 
-		self.p[pNum].retrieveWorkers(len(workerVal),cost)
+		self.p[pN].retrieveWorkers(1,cost)
 
 	def workerDrop(self,faction,locationN,workerVal):
 
@@ -246,7 +263,7 @@ class Game:
 			# Random market costs, fixed rewards
 			for j in [9,10]:
 				self.locationCR[i][j] = [self.market.pop(),
-					[[['star',1],['allegiance',1]]]]
+					[[['stars',1],['allegiance',1]]]]
 
 			# Mines
 			self.locationCR[i][12] = [[[[facC,1]]],[[[facR,1]],[['artifact',1]]]]
@@ -257,16 +274,16 @@ class Game:
 		# Artifact markets
 		for i in range(4):
 			artType = ['bat','book','bear','balloon','glasses','game']
-			anyThreeArt = list(combinations([['bat',1],['book',1],['bear',1],
+			anyThreeArt = list(combinations_with_replacement([['bat',1],['book',1],['bear',1],
 				['balloon',1],['glasses',1],['game',1]],3))
 			for a in artType:
 				anyThreeArt.append([[a,2]])
-			self.locationCR[i][11] = [anyThreeArt,[[['star',1],['allegiance',1]]]]
+			self.locationCR[i][11] = [anyThreeArt,[[['stars',1],['allegiance',1]]]]
 
 		# Icarite Markets
 		# Nimbus Loft
 		anyThreeR = list(combinations_with_replacement([['gold',1],['stone',1],['brick',1]],3))
-		self.locationCR[3][9] = [anyThreeR,[[['star',1],['allegiance',1]]]]
+		self.locationCR[3][9] = [anyThreeR,[[['stars',1],['allegiance',1]]]]
 		# Breeze Bar
 		anyComBliss = [[['bliss',1],['energy',1]],
 			[['bliss',1],['water',1]],[['bliss',1],['food',1]]]
@@ -277,9 +294,11 @@ class Game:
 
 		# Worker generation spaces
 		self.locationCR[4][0] = [[[['energy',3]]],
-			[[['worker',1],['knowledge',-2]]]]
-		self.locationCR[4][0] = [[[['water',3]]],
-			[[['worker',1],['morale',2]]]]
+			[[['worker',1],['knowledge',-2]],
+			[['knowledge',-2]]]]
+		self.locationCR[4][1] = [[[['water',3]]],
+			[[['worker',1],['morale',2]],
+			[['morale',2]]]]
 
 
 
@@ -296,7 +315,7 @@ class Game:
 
 	def buildMarketDeck(self):
 		from random import shuffle
-		from itertools import combinations
+		from itertools import combinations_with_replacement
 
 		self.market = []
 		# Particular Artifact + Commodity
@@ -333,13 +352,13 @@ class Game:
 				[['bliss',4],['stone',1]],[['bliss',4],['brick',1]]]
 		self.market.append(anyResBliss)
 
-		anyArtRes = list(combinations([['gold',1],['stone',1],['brick',1],
+		anyArtRes = list(combinations_with_replacement([['gold',1],['stone',1],['brick',1],
 			['bat',1],['book',1],['bear',1],
 			['balloon',1],['glasses',1],['game',1]],2))
-		anyTwoRes = list(combinations([['gold',1],['stone',1],['brick',1]],2))
+		anyTwoRes = list(combinations_with_replacement([['gold',1],['stone',1],['brick',1]],2))
 		for i in anyTwoRes:
 			anyArtRes.remove(i)
-		anyTwoArt = list(combinations([['bat',1],['book',1],['bear',1],
+		anyTwoArt = list(combinations_with_replacement([['bat',1],['book',1],['bear',1],
 			['balloon',1],['glasses',1],['game',1]],2))
 		for i in anyTwoArt:
 			anyArtRes.remove(i)
@@ -368,7 +387,7 @@ class Game:
 		for i in range(3):
 			if self.factions[i]['allegiance'] >= 8 or self.factions[i]['mine'] >= 7:
 				for j in range(self.pNum):
-					if self.p[j].recruit[1] == i:
+					if self.p[j].recruits[1] == i:
 						self.p[j].resources['recruit2Active']=True
 
 	def checkRecruitStars(self):
@@ -377,8 +396,8 @@ class Game:
 		for i in range(3):
 			if self.factions[i]['allegiance'] >= 11:
 				for j in range(self.pNum):
-					for r in range(len(self.p[j].recruit)):
-						if self.p[j].recruit[r] == i and (not self.p[j].recruitStar[r]):
+					for r in range(len(self.p[j].recruits)):
+						if self.p[j].recruits[r] == i and (not self.p[j].recruitStar[r]):
 							self.p[j].resources['stars']-=1
 							self.p[j].recruitStar[r] = True
 
@@ -400,13 +419,15 @@ class Game:
 
 	def winner(self):
 		# declare winner, not generalized.  Only for pNum == 2
-		if p[0].resources['stars'] < p[1].resources['stars']:
+		if self.p[0].resources['stars'] < self.p[1].resources['stars']:
 			return 0
-		if p[0].resources['stars'] > p[1].resources['stars']:
+		if self.p[0].resources['stars'] > self.p[1].resources['stars']:
 			return 1
 
-	def move(self,moveList):
+	def performAction(self,moveList):
+		import shlex
 		# Turn move list into a move
+		moveList = list(moveList)
 
 		factionNum	= moveList[1]
 		locationNum	= moveList[2]
@@ -456,17 +477,32 @@ class Game:
 			elif costOp == 2:
 				cost = 'bliss'
 
-			fStr	= str(factionNum)
+			fStr	= str(int(round(factionNum)))
 			lStr	= str(locationNum)
-			wStr	= str(workerNum)
+			wStr	= str(int(round(workerNum)))
+
+			lStr 	= list(shlex.shlex(lStr))
 
 			factionNum	= []
 			locationNum	= []
 			workerNum	= []
+
 			for i in range(len(fStr)):
-				factionNum.append(int(fStr[i]))
-				locationNum.append(int(lStr[i]))
-				workerNum.append(int(lStr[i]))
+				factionNum.append(int(fStr[i])-1)
+				workerNum.append(int(wStr[i]))
+
+			if int(lStr[2]) == 0:
+				locationNum.append(int(lStr[0])-1)
+			else:
+				dig = []
+				for i in range(len(lStr[2])):
+					dig.append(int(lStr[2][i]))
+				lStr = lStr[0]
+				for i in dig:
+					locationNum.append(int(lStr[:i])-1)
+					lStr = lStr[i:]
+
+
 
 			for i in range(len(factionNum)):
 				if i == 0:
@@ -480,6 +516,7 @@ class Game:
 		if self.isOver():
 			if self.existsWinner():
 				self.winnerP = self.winner()
+			self.over = True
 
 		# Check worker flipping
 		self.checkRecruitFlip()
@@ -488,8 +525,10 @@ class Game:
 
 		if self.turn == 0:
 			self.turn = 1
-		if self.turn == 1:
+		elif self.turn == 1:
 			self.turn = 0
+
+		self.turnCounter += 1
 
 
 
@@ -498,7 +537,7 @@ class Game:
 
 	def legalMoves(self):
 		# Generate list of legal moves for the current player
-		from itertools import chain
+		from itertools import chain, combinations
 
 		workersOnBoard	= list(chain.from_iterable(list(chain.from_iterable(self.locationP))))
 		costNum			= 0
@@ -508,97 +547,190 @@ class Game:
 		moveList = []
 		if self.p[self.turn].workers:
 			# may place if you have some active workers
-			for i in range(3):
+			for w in self.p[self.turn].workers:
+				# for each worker you may do these moves
+				for i in range(3):
+					# can always use commodity markets
+					multiUseMove = [0,i,0,0,0,w]
+					moveList.append(multiUseMove)
+
+					for j in [1,2,3,4]:
+						# first market exclusive spaces
+						cost = self.locationCR[i][j][costNum][0][0]
+						market1 = self.factions[i]['market1']
+						if self.p[self.turn].resources[cost[0]] >= cost[1] and not market1:
+							tempMove = [0,i,j,0,0,w]
+							moveList.append(tempMove)
+
+
+					for j in [5,6,7,8]:
+						# second market exclusive spaces
+						cost = self.locationCR[i][j][costNum][0][0]
+						market2 = self.factions[i]['market2']
+						if self.p[self.turn].resources[cost[0]] >= cost[1] and not market2:
+							tempMove = [0,i,j,0,0,w]
+							moveList.append(tempMove)
+
+					if self.factions[i]['starSlots'] > 0:
+						# random market 1 (space 9)
+						j = 9
+						costList = self.locationCR[i][j][costNum]
+						rewardList = self.locationCR[i][j][rewardNum]
+						market1 = self.factions[i]['market1']
+						if market1:
+							for cNum in range(len(costList)):
+								if self.checkCosts(costList[cNum]):
+									for rNum in range(len(rewardList)):
+										tempMove = [0,i,j,cNum,rNum,w]
+										moveList.append(tempMove)
+
+						# random market 2 (space 10)
+						j = 10
+						costList = self.locationCR[i][j][costNum]
+						rewardList = self.locationCR[i][j][rewardNum]
+						market2 = self.factions[i]['market2']
+						if market2:
+							for cNum in range(len(costList)):
+								if self.checkCosts(costList[cNum]):
+									for rNum in range(len(rewardList)):
+										tempMove = [0,i,j,cNum,rNum,w]
+										moveList.append(tempMove)
+
+						# artifact market (space 11)
+						j = 11
+						costList = self.locationCR[i][j][costNum]
+						rewardList = self.locationCR[i][j][rewardNum]
+						for cNum in range(len(costList)):
+							if self.checkCosts(costList[cNum]):
+								for rNum in range(len(rewardList)):
+									tempMove = [0,i,j,cNum,rNum,w]
+									moveList.append(tempMove)
+
+					# regular mine
+					j = 12
+					costList = self.locationCR[i][j][costNum]
+					rewardList = self.locationCR[i][j][rewardNum]
+					if not self.mineCheck(i):
+						for cNum in range(len(costList)):
+							if self.checkCosts(costList[cNum]):
+								for rNum in range(len(rewardList)):
+									tempMove = [0,i,j,cNum,rNum,w]
+									moveList.append(tempMove)
+
+					# upgraded mine
+					j = 13
+					costList = self.locationCR[i][j][costNum]
+					rewardList = self.locationCR[i][j][rewardNum]
+					if self.mineCheck(i):
+						for cNum in range(len(costList)):
+							if self.checkCosts(costList[cNum]):
+								for rNum in range(len(rewardList)):
+									tempMove = [0,i,j,cNum,rNum,w]
+									moveList.append(tempMove)
+
+
+				# Icarite markets
+				i = 3
 				# can always use commodity markets
 				multiUseMove = [0,i,0,0,0,w]
 				moveList.append(multiUseMove)
 
-				for j in [1,2,3,4]:
-					# first market exclusive spaces
-					cost = self.locationCR[i][j][costNum][0][0]
-					market1 = self.factions[i]['market1']
-					if self.p[self.turn].resources[cost[0]] >= cost[1] and not market1:
-						tempMove = [0,i,j,0,0,w]
-						moveList.append(tempMove)
+				if self.factions[i]['starSlots'] > 0:
+					# artifact market + 3 fixed markets
+					for j in [9,11]:
+						costList = self.locationCR[i][j][costNum]
+						rewardList = self.locationCR[i][j][rewardNum]
+						for cNum in range(len(costList)):
+							if self.checkCosts(costList[cNum]):
+								for rNum in range(len(rewardList)):
+									tempMove = [0,i,j,cNum,rNum,w]
+									moveList.append(tempMove)
 
+				# 2 fixed com. markets
+					for j in [10,12]:
+						costList = self.locationCR[i][j][costNum]
+						rewardList = self.locationCR[i][j][rewardNum]
+						for cNum in range(len(costList)):
+							if self.checkCosts(costList[cNum]):
+								for rNum in range(len(rewardList)):
+									tempMove = [0,i,j,cNum,rNum,w]
+									moveList.append(tempMove)
 
-				for j in [5,6,7,8]:
-					# second market exclusive spaces
-					cost = self.locationCR[i][j][costNum][0][0]
-					market2 = self.factions[i]['market2']
-					if self.p[self.turn].resources[cost[0]] >= cost[1] and not market2:
-						tempMove = [0,i,j,0,0,w]
-						moveList.append(tempMove)
-
-				# random market 1 (space 9)
-				j = 9
-				costList = self.locationCR[i][j][costNum]
-				rewardList = self.locationCR[i][j][rewardNum]
-				market1 = self.factions[i]['market1']
-				if market1:
+				# Worker generation
+				i = 4
+				for j in [0,1]:
+					costList = self.locationCR[i][j][costNum]
+					rewardList = self.locationCR[i][j][rewardNum]
 					for cNum in range(len(costList)):
-						if checkCosts(costList[cNum]):
-							for rNum in range(len(rewardList))
-								tempMove = [0,i,j,cNum,rNum,w]
-								moveList.append(tempMove)
-
-				# random market 2 (space 10)
-				j = 10
-				costList = self.locationCR[i][j][costNum]
-				rewardList = self.locationCR[i][j][rewardNum]
-				market2 = self.factions[i]['market2']
-				if market2:
-					for cNum in range(len(costList)):
-						if checkCosts(costList[cNum]):
-							for rNum in range(len(rewardList))
-								tempMove = [0,i,j,cNum,rNum,w]
-								moveList.append(tempMove)
-
-				# artifact market (space 11)
-				j = 11
-				costList = self.locationCR[i][j][costNum]
-				rewardList = self.locationCR[i][j][rewardNum]
-				for cNum in range(len(costList)):
-					if checkCosts(costList[cNum]):
-						for rNum in range(len(rewardList))
-							tempMove = [0,i,j,cNum,rNum,w]
-							moveList.append(tempMove)
-
-				# regular mine
-				j = 12
-				costList = self.locationCR[i][j][costNum]
-				rewardList = self.locationCR[i][j][rewardNum]
-				if not mineCheck(i):
-					for cNum in range(len(costList)):
-						if checkCosts(costList[cNum]):
-							for rNum in range(len(rewardList))
-								tempMove = [0,i,j,cNum,rNum,w]
-								moveList.append(tempMove)
-
-				# upgraded mine
-				j = 13
-				costList = self.locationCR[i][j][costNum]
-				rewardList = self.locationCR[i][j][rewardNum]
-				if mineCheck(i):
-					for cNum in range(len(costList)):
-						if checkCosts(costList[cNum]):
-							for rNum in range(len(rewardList))
-								tempMove = [0,i,j,cNum,rNum,w]
-								moveList.append(tempMove)
+						if self.checkCosts(costList[cNum]):
+							for rNum in range(len(rewardList)):
+								if self.checkWorkers(rewardList[rNum]):
+									tempMove = [0,i,j,cNum,rNum,w]
+									moveList.append(tempMove)
 
 
+		if self.turn in workersOnBoard:
+			# may retrieve if you have some workers on the board
+			# find spaces that have workers and add them to list
+			fList	= []
+			lList 	= []
+			wList 	= []
+			for i in range(4):
+				for j in range(14):
+					spacesP	= self.locationP[i][j]
+					spaces 	= self.location[i][j]
+					if self.turn in spacesP:
+						for wN in range(len(spacesP)):
+							if spacesP[wN] == self.turn:
+								fList.append(str(i+1))
+								lList.append(str(j+1))
+								wList.append(str(spaces[wN]))
+
+			i = 4
+			for j in range(2):
+				spacesP	= self.locationP[i][j]
+				spaces 	= self.location[i][j]
+				if self.turn in spacesP:
+					for wN in range(len(spacesP)):
+						if spacesP[wN] == self.turn:
+							fList.append(str(i+1))
+							lList.append(str(j+1))
+							wList.append(str(spaces[wN]))
+
+			for tList in [fList,lList,wList]:
+				tListOrig = tList[:]
+				for l in range(1,len(tList)+1):
+					if l > 1:
+						comb = list(combinations(tListOrig,l))
+						for c in comb:
+							combList = ''
+							digList = ''
+							for n in c:
+								combList += n
+								digList += str(len(n))
+
+							tList.append(str(int(combList)+int(digList)/10.**len(digList) ))
+
+				for n in range(len(tList)):
+					tList[n] = float(tList[n])
+
+			for i in range(len(fList)):
+				# can always retrieve for morale loss
+				retrieveMove = [1,fList[i],lList[i],0,0,wList[i]]
+				moveList.append(retrieveMove)
+
+				# check for food, bliss removal
+				if self.p[self.turn].resources['food'] >= 1:
+					retrieveMove = [1,fList[i],lList[i],1,0,wList[i]]
+					moveList.append(retrieveMove)
+
+				if self.p[self.turn].resources['bliss'] >= 1:
+					retrieveMove = [1,fList[i],lList[i],2,0,wList[i]]
+					moveList.append(retrieveMove)
+
+		return moveList
 
 
-			# for w in self.p[self.turn].workers:
-			# 	# can place any active worker
-
-
-
-
-		# if self.turn in workersOnBoard:
-		# 	# may retrieve if you have some workers on the board
-
-		
 
 	def mineCheck(self,factionNum):
 		# check to see if you can use the upgraded mine
@@ -606,10 +738,21 @@ class Game:
 		if self.p[self.turn].resources['recruit2Active']:
 			activeRecruits = self.p[self.turn].recruits
 		else:
-			activeRecruits = self.p[self.turn].recruits[0]
+			activeRecruits = [self.p[self.turn].recruits[0]]
 		if (mine >= 5) and (factionNum in activeRecruits):
 			return True
 		return False
+
+	def checkWorkers(self,reward):
+		# check to see if getting another worker would bump you over
+		workers = len(self.p[self.turn].workers)
+		maxWorkers = 4
+		for r in reward:
+			if r[0] == 'worker':
+				workers += 1
+		if workers > maxWorkers:
+			return False
+		return True
 
 	def checkCosts(self,cost):
 		# check if all costs can be paid

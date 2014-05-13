@@ -6,7 +6,7 @@ class Player:
 
 		# Initialize starting goods/attributes
 		self.resources = dict(energy=0,water=0,food=0,bliss=0,
-			gold=0,stone=0,clay=0,morale=1,knowledge=3,stars=10,
+			gold=0,stone=0,brick=0,morale=1,knowledge=3,stars=10,
 			bat=0,book=0,bear=0,balloon=0,glasses=0,game=0,
 			recruit2Active=False)
 

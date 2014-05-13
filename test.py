@@ -1,19 +1,23 @@
 from game import *
+import random
 
 g = Game()
 
-# n = g.p[0].workers[0]
+over = False
+while not over:
 
-# g.useMultiUse(g.factions[move[0]],g.p[g.turn].workers[move[2]])
+	m = random.choice(g.legalMoves())
+	# print 'm = ', m, 'turn = ', g.turn
+	g.move(m)
 
-# move = [0,1,0]
-# g.useExclusive(g.factions[move[0]],move[1],g.p[g.turn].workers[move[2]],[['gold',1]])
+	over = g.over
 
-# move = [0,2,0]
-# g.useExclusive(g.factions[move[0]],move[1],g.p[g.turn].workers[move[2]],[['stone',1]])
+print g.winner(), g.turnCounter
 
-# print g.locationCR
+# g.move([0,4,0,0,0,g.p[0].workers[0]])
 
-g.move([0,4,0,0,0,g.p[0].workers[0]])
+# g.move([0,0,0,0,0,g.p[0].workers[0]])
 
-g.move([0,0,0,0,0,g.p[0].workers[0]])
+# g.move([0,1,0,0,0,g.p[0].workers[0]])
+
+# g.legalMoves()
