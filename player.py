@@ -6,7 +6,7 @@ class Player:
 
 		# Initialize starting goods/attributes
 		self.resources = dict(energy=0,water=0,food=0,bliss=0,
-			gold=0,stone=0,brick=0,morale=1,knowledge=3,stars=10,
+			gold=0,stone=0,brick=0,morale=1,knowledge=3,stars=8,
 			bat=0,book=0,bear=0,balloon=0,glasses=0,game=0,
 			recruit2Active=False)
 
@@ -30,8 +30,13 @@ class Player:
 		if cost:
 			self.resources[cost]-=1
 
-			if self.resources['morale'] == 0:
+			if cost == 'food' or cost == 'bliss':
+				self.resources['morale']+=2
+
+			if self.resources['morale'] <= 0:
 				self.resources['morale'] = 1
+			elif self.resources['morale'] >= 7:
+				self.resources['morale'] = 6
 
 		while n > 0:
 			self.workers.append(randint(1,6))

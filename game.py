@@ -1,15 +1,16 @@
 from player import *
-from pybrain.rl.environments.twoplayergame import TwoPlayerGame
+from pybrain.rl.environments.environment import Environment
 
-class Game(TwoPlayerGame):
+class Game(Environment):
 	def __init__(self):
-		from random import shuffle, randint
 
 		self.pNum = 2
 
 		self.reset()
 
 	def reset(self):
+		from random import shuffle, randint
+
 		self.turn = 0
 
 		self.over = False
@@ -97,14 +98,14 @@ class Game(TwoPlayerGame):
 		else:
 			lN = locationN
 
+		self.workerDrop(faction,lN,workerVal)					# add new worker die
+
 		if len(self.location[faction['num']][lN]) == 1:			# if we need to bump, then:
 			facPair = [faction['num'],lN]						# list of [ faction #, location key #]
 			dieN = self.location[faction['num']][lN][0]			# list of number of die in that location
 			pN = self.locationP[faction['num']][lN][0]			# list of player #s
 
 			self.retrieve(facPair, dieN, pN)
-
-		self.workerDrop(faction,lN,workerVal)					# add new worker die
 
 		if cost:
 			for i in range(len(cost)):
@@ -216,6 +217,8 @@ class Game(TwoPlayerGame):
 		self.location[faction['num']][locationN].append(workerVal)
 
 		self.locationP[faction['num']][locationN].append(self.turn)
+
+		# print self.turn, workerVal, faction['num'], locationN
 
 		self.p[self.turn].workers.remove(workerVal)
 
@@ -523,17 +526,184 @@ class Game(TwoPlayerGame):
 		# Check worker stars
 		self.checkRecruitStars()
 
-		if self.turn == 0:
-			self.turn = 1
-		elif self.turn == 1:
-			self.turn = 0
+		self.turn = (self.turn + 1)%2
 
 		self.turnCounter += 1
 
-
-
-
 		# may implement moral dilemma later (moveList[0] == 2)
+
+
+	def getSensors(self):
+		# output from the most recent move
+		from scipy import zeros
+		from itertools import chain
+
+		obs = zeros(469)
+		oN = 2
+
+		if self.turn == 0:
+			obs[0] = 1
+			obs[1] = 0
+		if self.turn == 1:
+			obs[0] = 0
+			obs[1] = 1
+
+		pList = [0,1]
+
+		# Players
+		for pN in pList:
+			# Normal faction spaces
+			for i in range(3):
+				for j in range(14):
+					spacesP	= self.locationP[i][j]
+					if pN in spacesP:
+						obs[oN] = 1
+					oN+=1
+
+			# Icarite faction spaces
+			i = 3
+			for j in [0,9,10,11,12]:
+				spacesP	= self.locationP[i][j]
+				if pN in spacesP:
+					obs[oN] = 1
+				oN+=1
+
+			# Worker gen. spaces
+			i = 4
+			for j in [0,1]:
+				spacesP	= self.locationP[i][j]
+				if pN in spacesP:
+					obs[oN] = 1
+				oN+=1
+
+			# total workers, active workers
+			for j in range(1,5):
+				if len(self.p[pN].workers) >= j:
+					obs[oN] = 1
+				oN+=1
+
+				if self.p[pN].nActiveWorkers >= j:
+					obs[oN] = 1
+				oN+=1
+
+
+			# total resources per category
+			resList = ['energy','water','food','bliss','gold','stone','brick']
+			for r in resList:
+				for j in range(1,5):
+					if self.p[pN].resources[r] >= j:
+						obs[oN] = 1
+					oN+=1
+
+				if self.p[pN].resources[r] >= j:
+					obs[oN] = (self.p[pN].resources[r] - j)/2
+
+				oN+=1
+
+			# total morale/knowledge
+			resList = ['morale','knowledge']
+			for r in resList:
+				for j in range(1,7):
+					if self.p[pN].resources[r] >= j:
+						obs[oN] = 1
+					oN+=1
+
+			# total stars left
+			resList = ['stars']
+			for r in resList:
+				for j in range(1,9):
+					if self.p[pN].resources[r] < j:
+						obs[oN] = 1
+					oN+=1
+
+		# World
+		for i in range(4):
+
+			# allegiance tracks
+			for j in range(1,12):
+				if self.factions[i]['allegiance'] >= j:
+					obs[oN] = 1
+				oN+=1
+
+			# commodity bonuses, mine bonuses
+			for j in [2,5]:
+				if self.factions[i]['allegiance'] >= j:
+					obs[oN] = 1
+				oN+=1
+
+			# # of stars left per faciton
+			for j in [1,2]:
+				if self.factions[i]['starSlots'] < j:
+					obs[oN] = 1
+				oN+=1
+
+			# Resource used as a random market cost (Icarites have no random markets)
+			if i < 3:
+				# mine level
+				for j in range(1,8):
+					if self.factions[i]['mine'] >= j:
+						obs[oN] = 1
+					oN+=1
+
+				# if markets built
+				if self.factions[i]['market1']:
+					obs[oN] = 1
+				oN+=1
+
+				if self.factions[i]['market2']:
+					obs[oN] = 1
+				oN+=1
+
+				resList = (['energy','water','food','bliss','gold','stone','brick',
+					'bat','book','bear','balloon','glasses','game'])
+				costNum = 0
+				for j in [9,10]:
+					for r in resList:
+						marketThings = list(chain.from_iterable(list(chain.from_iterable(
+							self.locationCR[i][j][costNum]))))
+						if r in marketThings:
+							obs[oN] = 1
+						oN += 1
+
+		# Hidden player elements (will be filtered by the task)
+		for pN in pList:
+
+			# artifacts per type, total artifacts
+			totArt = 0
+			artList = ['bat','book','bear','balloon','glasses','game']
+			for r in artList:
+				for j in range(1,4):
+					if self.p[pN].resources[r] >= j:
+						obs[oN] = 1
+					oN+=1
+
+				totArt += self.p[pN].resources[r]
+
+				if self.p[pN].resources[r] >= j:
+					obs[oN] = (self.p[pN].resources[r] - j)/2
+				oN+=1
+
+			for j in range(1,7):
+				if totArt >= j:
+					obs[oN] = 1
+				oN+=1
+
+			# recruits
+			for r in range(2):
+				for j in range(4):
+					if self.p[pN].recruits[r] == j:
+						obs[oN] = 1
+					oN+=1
+
+			# recruits active
+			if self.p[pN].resources['recruit2Active']:
+				obs[oN] = 1
+			oN+=1
+
+		print oN
+
+		return obs
+		
 
 	def legalMoves(self):
 		# Generate list of legal moves for the current player
