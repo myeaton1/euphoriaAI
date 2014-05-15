@@ -2,7 +2,8 @@ from game import *
 import random
 
 win = []
-for i in range(1):
+lMoves = []
+for i in range(1000):
 	g = Game()
 
 	over = False
@@ -12,11 +13,15 @@ for i in range(1):
 		# print 'm = ', m, ' turn = ', g.turn, ' turn # = ', g.turnCounter
 		g.performAction(m)
 
+		lMoves.append(len(g.legalMoves()))
+
 		over = g.over
 
 	if g.winner() in [0,1]:
 		win.append(g.winner())
 		print i
+
+		lMoves = [max(lMoves)]
 
 print sum(win)/float(len(win))
 

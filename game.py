@@ -473,6 +473,8 @@ class Game(Environment):
 
 		elif moveList[0] == 1:
 			# retrieve worker(s)
+			# simplifying for now to shrink the action space
+
 			if costOp == 0:
 				cost = 'morale'
 			elif costOp == 1:
@@ -480,40 +482,45 @@ class Game(Environment):
 			elif costOp == 2:
 				cost = 'bliss'
 
-			fStr	= str(int(round(factionNum)))
-			lStr	= str(locationNum)
-			wStr	= str(int(round(workerNum)))
+			# Alternate retrieve: when you retrieve, you must retrieve all workers
+			# Find workers, then retrieve them
 
-			lStr 	= list(shlex.shlex(lStr))
+			for 
 
-			factionNum	= []
-			locationNum	= []
-			workerNum	= []
+			# fStr	= str(int(round(factionNum)))
+			# lStr	= str(locationNum)
+			# wStr	= str(int(round(workerNum)))
 
-			for i in range(len(fStr)):
-				factionNum.append(int(fStr[i])-1)
-				workerNum.append(int(wStr[i]))
+			# lStr 	= list(shlex.shlex(lStr))
 
-			if int(lStr[2]) == 0:
-				locationNum.append(int(lStr[0])-1)
-			else:
-				dig = []
-				for i in range(len(lStr[2])):
-					dig.append(int(lStr[2][i]))
-				lStr = lStr[0]
-				for i in dig:
-					locationNum.append(int(lStr[:i])-1)
-					lStr = lStr[i:]
+			# factionNum	= []
+			# locationNum	= []
+			# workerNum	= []
+
+			# for i in range(len(fStr)):
+			# 	factionNum.append(int(fStr[i])-1)
+			# 	workerNum.append(int(wStr[i]))
+
+			# if int(lStr[2]) == 0:
+			# 	locationNum.append(int(lStr[0])-1)
+			# else:
+			# 	dig = []
+			# 	for i in range(len(lStr[2])):
+			# 		dig.append(int(lStr[2][i]))
+			# 	lStr = lStr[0]
+			# 	for i in dig:
+			# 		locationNum.append(int(lStr[:i])-1)
+			# 		lStr = lStr[i:]
 
 
 
-			for i in range(len(factionNum)):
-				if i == 0:
-					self.retrieve([factionNum[i],locationNum[i]],
-						workerNum[i],self.turn,cost)
-				else:
-					self.retrieve([factionNum[i],locationNum[i]],
-						workerNum[i],self.turn)
+			# for i in range(len(factionNum)):
+			# 	if i == 0:
+			# 		self.retrieve([factionNum[i],locationNum[i]],
+			# 			workerNum[i],self.turn,cost)
+			# 	else:
+			# 		self.retrieve([factionNum[i],locationNum[i]],
+			# 			workerNum[i],self.turn)
 
 		# Check end of the game
 		if self.isOver():
