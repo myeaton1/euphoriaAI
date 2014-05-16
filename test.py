@@ -1,27 +1,32 @@
-from game import *
+from scipy import * #@UnusedWildImport
+import pylab
 import random
+
+from euphoria import EuphoriaGame
+from euphoriatask import EuphoriaTask
+from euavnetwork import euActionValueTable
+from pybrain.rl.agents import LearningAgent
+from pybrain.rl.learners import Q, SARSA #@UnusedImport
+from pybrain.rl.experiments import Experiment
+
+g = EuphoriaGame()
 
 win = []
 lMoves = []
-for i in range(1000):
-	g = Game()
+for i in range(10):
+	g = EuphoriaGame()
 
 	over = False
 	while not over:
 
-		m = random.choice(g.legalMoves())
+		m = random.choice(g.legalMoves(g.turn))
 		# print 'm = ', m, ' turn = ', g.turn, ' turn # = ', g.turnCounter
-		g.performAction(m)
-
-		lMoves.append(len(g.legalMoves()))
+		g.doMove(g.turn,m)
 
 		over = g.over
 
 	if g.winner() in [0,1]:
 		win.append(g.winner())
-		print i
-
-		lMoves = [max(lMoves)]
 
 print sum(win)/float(len(win))
 

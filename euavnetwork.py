@@ -1,4 +1,16 @@
-from pybrain.rl.learners.valuebased import ActionValueInterface
+from pybrain.rl.learners.valuebased.interface import ActionValueInterface
+from scipy import argsort
+
+from pybrain.utilities import abstractMethod
+from pybrain.structure.modules import Table, Module, TanhLayer, LinearLayer, BiasUnit
+from pybrain.structure.connections import FullConnection
+from pybrain.structure.networks import FeedForwardNetwork
+from pybrain.structure.parametercontainer import ParameterContainer
+from pybrain.tools.shortcuts import buildNetwork
+from pybrain.utilities import one_to_n
+
+from scipy import argmax, array, r_, asarray, where
+from random import choice
 
 class euActionValueNetwork(Module, ActionValueInterface):
     """ A network that approximates action values for continuous state /
@@ -7,9 +19,9 @@ class euActionValueNetwork(Module, ActionValueInterface):
         actions, and the maximal action is returned. This network is used
         for the NFQ algorithm. """
 
-    def __init__(self, dimState, name=None):
+    def __init__(self, dimState, numActions, name=None):
         Module.__init__(self, dimState, 1, name)
-        self.network = buildNetwork(dimState, dimState, 1)
+        self.network = buildNetwork(dimState + numActions, dimState + numActions, 1)
         self.numActions = numActions
 
     def _forwardImplementation(self, inbuf, outbuf):
@@ -20,7 +32,15 @@ class euActionValueNetwork(Module, ActionValueInterface):
 
     def getMaxAction(self, state):
         """ Return the action with the maximal value for the given state. """
-        return argmax(self.getActionValues(state))
+        moveRanks   = argsort(self.getActionValues(state))[::-1]
+        print len(moveRanks), moveRanks
+        legalMoves  = state[-self.numActions:]
+        print legalMoves
+
+        for m in moveRanks:
+            print m
+            if legalMoves[m] == 1:
+                return m
 
     def getActionValues(self, state):
         """ Run forward activation for each of the actions and returns all values. """
