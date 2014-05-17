@@ -36,14 +36,15 @@ class euActionValueNetwork(Module, ActionValueInterface):
         # print self.getActionValues(state)
         # print state
         # print len(moveRanks), moveRanks
-        legalMoves  = state[-self.numActions:]
-        # print '\n',legalMoves,'\n'
+        self.legalMoves  = state[-self.numActions:]
+
+        # print self.legalMoves.nonzero()[0]
+        # return moveRanks[self.legalMoves[0]]
 
 
         for m in moveRanks:
             # print m, legalMoves[m]
-            if legalMoves[m] == 1:
-                # print m
+            if self.legalMoves[m] == 1:
                 return m
 
     def getActionValues(self, state):

@@ -11,7 +11,7 @@ from pybrain.rl.environments.episodic import EpisodicTask
 
 
 class EuphoriaTask(EpisodicTask, Named):
-    """ The task of winning the maximal number of Gomoku games against a fixed opponent. """
+    """ The task of winning the maximal number of Euphoria games against a fixed opponent. """
 
     # first game, opponent is black
     opponentStart = False
