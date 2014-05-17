@@ -1,6 +1,7 @@
 from scipy import * #@UnusedWildImport
 import pylab
 import random
+import csv
 
 from euphoria import EuphoriaGame
 from euphoriatask import EuphoriaTask
@@ -32,9 +33,13 @@ reward = []
 while i<1:
 	tic=timeit.default_timer()
 
-	r = experiment.doEpisodes(1)
+	r = experiment.doEpisodes(3)
 	for ri in r:
 		reward.append(ri[-1])
+
+	with open('rewardList_'+str(i)+'.csv', 'wb') as f:
+	    writer = csv.writer(f)
+	    writer.writerows([reward])
 
 	# print reward
 	# agent.learn()

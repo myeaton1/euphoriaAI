@@ -479,7 +479,7 @@ class EuphoriaGame(TwoPlayerGame):
 		import shlex
 		# Turn action number into move list
 		moveList = self.actionInterpreter(action)
-		print player, self.p[player].workers, action, moveList
+		# print player, self.p[player].workers, action, moveList
 
 		# moveList = self.actionInterpreter(moveList)
 		# ipsh()
