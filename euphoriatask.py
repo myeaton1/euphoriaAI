@@ -50,7 +50,8 @@ class EuphoriaTask(EpisodicTask, Named):
         EpisodicTask.reset(self)
         if self.opponent.color == EuphoriaGame.BLACK:
             # first move by opponent
-            EpisodicTask.performAction(self, self.opponent.getAction())
+            self.opponent.game = self.env
+            EpisodicTask.performAction(self, (EuphoriaGame.BLACK,self.opponent.getAction()))
 
     def isFinished(self):
         res = self.env.gameOver()
@@ -78,26 +79,34 @@ class EuphoriaTask(EpisodicTask, Named):
             return 0
 
     def performAction(self, action):
-        EpisodicTask.performAction(self, (EuphoriaGame.BLACK, action))
+        # agent.game = self.env
+        if self.opponentStart:
+            EpisodicTask.performAction(self, (EuphoriaGame.WHITE, action))
+        else:
+            EpisodicTask.performAction(self, (EuphoriaGame.BLACK, action))
         if not self.isFinished():
-            EpisodicTask.performAction(self, (EuphoriaGame.WHITE,self.opponent.getAction()))
+            self.opponent.game = self.env
+            if self.opponentStart:
+                EpisodicTask.performAction(self, (EuphoriaGame.BLACK,self.opponent.getAction()))
+            else:
+                EpisodicTask.performAction(self, (EuphoriaGame.WHITE,self.opponent.getAction()))
 
-    # def f(self, x):
-    #     """ If a module is given, wrap it into a ModuleDecidingAgent before evaluating it.
-    #     Also, if applicable, average the result over multiple games. """
-    #     if isinstance(x, Module):
-    #         agent = ModuleDecidingPlayer(x, self.env, greedySelection = True)
-    #     elif isinstance(x, GomokuPlayer):
-    #         agent = x
-    #     else:
-    #         raise NotImplementedError('Missing implementation for '+x.__class__.__name__+' evaluation')
-    #     res = 0
-    #     agent.game = self.env
-    #     self.opponent.game = self.env
-    #     for dummy in range(self.averageOverGames):
-    #         agent.color = -self.opponent.color
-    #         res += EpisodicTask.f(self, agent)
-    #     return res / float(self.averageOverGames)
+    def f(self, x):
+        """ If a module is given, wrap it into a ModuleDecidingAgent before evaluating it.
+        Also, if applicable, average the result over multiple games. """
+        if isinstance(x, Module):
+            agent = ModuleDecidingPlayer(x, self.env, greedySelection = True)
+        elif isinstance(x, EuphoriaRandomPlayer):
+            agent = x
+        else:
+            raise NotImplementedError('Missing implementation for '+x.__class__.__name__+' evaluation')
+        res = 0
+        agent.game = self.env
+        self.opponent.game = self.env
+        for dummy in range(self.averageOverGames):
+            agent.color = -self.opponent.color
+            res += EpisodicTask.f(self, agent)
+        return res / float(self.averageOverGames)
 
 
 

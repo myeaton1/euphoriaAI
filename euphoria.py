@@ -1,6 +1,26 @@
 from player import *
 from pybrain.rl.environments.twoplayergames.twoplayergame import TwoPlayerGame
 
+# # First import the embed function
+# from IPython.terminal.embed import InteractiveShellEmbed
+
+# # Now create the IPython shell instance. 
+# ipshell = InteractiveShellEmbed()
+
+# DEBUG = True
+
+# # Wrap it in a function that gives me more context:
+# def ipsh():
+#     # frameinfo = getframeinfo(currentframe())
+#     # msg = 'Stopped at: ' + frameinfo.filename + ' ' +  str(frameinfo.lineno)
+#     if DEBUG == True:
+#         frame = inspect.currentframe().f_back
+#         msg = 'Stopped at {0.f_code.co_filename} at line {0.f_lineno}'.format(frame)
+
+#         # Go back one level! 
+#         # This is needed because the call to ipshell is inside the function ipsh()
+#         ipshell(msg,stack_depth=2)
+
 class EuphoriaGame(TwoPlayerGame):
 
 	BLACK = 0
@@ -14,8 +34,6 @@ class EuphoriaGame(TwoPlayerGame):
 
 	def reset(self):
 		from random import shuffle, randint
-
-		self.turn = 0
 
 		self.over = False
 
@@ -58,35 +76,35 @@ class EuphoriaGame(TwoPlayerGame):
 		self.buildArtifactDeck()
 
 
-	def useMultiUse(self,faction,workerVal):
+	def useMultiUse(self,player,faction,workerVal):
 
-		self.workerDrop(faction,0,workerVal)							# add new worker die
+		self.workerDrop(player,faction,0,workerVal)							# add new worker die
 
 		if sum(self.location[faction['num']][0]) <= 4:
 			# 1 commodity + allegiance track +1
-			self.p[self.turn].resources[faction['com']] += (1 + self.comAllegianceBonus(faction))
+			self.p[player].resources[faction['com']] += (1 + self.comAllegianceBonus(player,faction))
 
 			self.factions[faction['num']]['allegiance']+=1
 
 		if (sum(self.location[faction['num']][0]) >= 5 and sum(self.location[faction['num']][0]) <= 8):
 			#
-			self.p[self.turn].resources[faction['com']] += (1 + self.comAllegianceBonus(faction))
+			self.p[player].resources[faction['com']] += (1 + self.comAllegianceBonus(player,faction))
 
-			self.p[self.turn].resources['knowledge']-=1
-			if self.p[self.turn].resources['knowledge']<=0:
-				self.p[self.turn].resources['knowledge'] = 1
+			self.p[player].resources['knowledge']-=1
+			if self.p[player].resources['knowledge']<=0:
+				self.p[player].resources['knowledge'] = 1
 
 		if sum(self.location[faction['num']][0]) >= 9:
-			self.p[self.turn].resources[faction['com']] += (2 + self.comAllegianceBonus(faction))
+			self.p[player].resources[faction['com']] += (2 + self.comAllegianceBonus(player,faction))
 
-			self.p[self.turn].resources['knowledge']+=1
-			if self.p[self.turn].resources['knowledge']>=7:
-				self.p[self.turn].resources['knowledge'] = 6
+			self.p[player].resources['knowledge']+=1
+			if self.p[player].resources['knowledge']>=7:
+				self.p[player].resources['knowledge'] = 6
 
-	def comAllegianceBonus(self,faction):
-		if ((self.p[self.turn].recruits[0] == faction['num']) or
-			((self.p[self.turn].recruits[1] == faction['num']) and
-				(self.p[self.turn].resources['recruit2Active']))):
+	def comAllegianceBonus(self,player,faction):
+		if ((self.p[player].recruits[0] == faction['num']) or
+			((self.p[player].recruits[1] == faction['num']) and
+				(self.p[player].resources['recruit2Active']))):
 
 			if faction['allegiance'] >= 2:
 				return 1	
@@ -96,7 +114,7 @@ class EuphoriaGame(TwoPlayerGame):
 		
 
 
-	def useTemp(self,faction,locationN,workerVal,cost=None,reward=None):
+	def useTemp(self,player,faction,locationN,workerVal,cost=None,reward=None):
 
 		# deal with upgraded mines 
 		if locationN == 13:
@@ -104,7 +122,7 @@ class EuphoriaGame(TwoPlayerGame):
 		else:
 			lN = locationN
 
-		self.workerDrop(faction,lN,workerVal)					# add new worker die
+		self.workerDrop(player,faction,lN,workerVal)					# add new worker die
 
 		if len(self.location[faction['num']][lN]) == 1:			# if we need to bump, then:
 			facPair = [faction['num'],lN]						# list of [ faction #, location key #]
@@ -116,23 +134,23 @@ class EuphoriaGame(TwoPlayerGame):
 		if cost:
 			for i in range(len(cost)):
 				if not locationN == 11:
-					self.p[self.turn].resources[cost[i][0]]-=cost[i][1]
+					self.p[player].resources[cost[i][0]]-=cost[i][1]
 
 			if locationN == 11:
 				# shrink action space by dealing with art. markets in a basic way
 				artType = ['bat','book','bear','balloon','glasses','game']
 				artNum = []
 				for a in artType:
-					artNum.append(self.p[self.turn].resources[a])
+					artNum.append(self.p[player].resources[a])
 				maxArt = artType[artNum.index(max(artNum))]
 				if max(artNum) >= 2:
-					self.p[self.turn].resources[maxArt]-=2
+					self.p[player].resources[maxArt]-=2
 
 				if max(artNum) < 2:
 					count = 0
 					for a in artType:
-						if self.p[self.turn].resources[a] > 0:
-							self.p[self.turn].resources[a]-=1
+						if self.p[player].resources[a] > 0:
+							self.p[player].resources[a]-=1
 							count+=1
 						if count == 3:
 							break
@@ -146,50 +164,50 @@ class EuphoriaGame(TwoPlayerGame):
 					self.factions[faction['num']]['allegiance']+=1
 				elif reward[i][0] == 'stars':
 					self.factions[faction['num']]['starSlots']-=1
-					self.p[self.turn].resources[reward[i][0]]-=reward[i][1]
+					self.p[player].resources[reward[i][0]]-=reward[i][1]
 				elif reward[i][0] == 'worker':
-					if len(self.p[self.turn].workers)<=4:
-						self.p[self.turn].retrieveWorkers(1)
-						self.p[self.turn].totalWorkers+=1
+					if len(self.p[player].workers)<=4:
+						self.p[player].retrieveWorkers(1)
+						self.p[player].totalWorkers+=1
 				elif reward[i][0] == 'artifact':
 					for j in range(reward[i][1]):
 						if not self.artifact:
 							self.buildArtifactDeck()
 						dealArt = self.artifact.pop()
 
-						self.p[self.turn].resources[dealArt]+=1
+						self.p[player].resources[dealArt]+=1
 
-						self.checkMoraleCap()
+						self.checkMoraleCap(player)
 
 
 				else:
-					self.p[self.turn].resources[reward[i][0]]+=reward[i][1]
+					self.p[player].resources[reward[i][0]]+=reward[i][1]
 
 				# Make sure knowledge/morale not out of whack
-				self.verifyMoraleKnowledgeRange()
+				self.verifyMoraleKnowledgeRange(player)
 
-	def checkMoraleCap(self):
+	def checkMoraleCap(self,player):
 		from random import choice
 		# in case player has too many artifacts, discard down
 		totArt = 0
 		artType = ['bat','book','bear','balloon','glasses','game']
 		for a in artType:
-			totArt += self.p[self.turn].resources[a]
-		while totArt > self.p[self.turn].resources['morale']:
+			totArt += self.p[player].resources[a]
+		while totArt > self.p[player].resources['morale']:
 			# if you have too many artifacts, you must discard one randomly
-			self.p[self.turn].resources[choice(artType)]-=1
+			self.p[player].resources[choice(artType)]-=1
 			totArt = 0
 			for a in artType:
-				totArt += self.p[self.turn].resources[a]
+				totArt += self.p[player].resources[a]
 
 
-	def useExclusive(self,faction,locationN,workerVal,cost=None):
+	def useExclusive(self,player,faction,locationN,workerVal,cost=None):
 
-		self.workerDrop(faction,locationN,workerVal)					# add new worker die
+		self.workerDrop(player,faction,locationN,workerVal)					# add new worker die
 
 		if cost:
 			for i in range(len(cost)):
-				self.p[self.turn].resources[cost[i][0]]-=cost[i][1]
+				self.p[player].resources[cost[i][0]]-=cost[i][1]
 
 		if locationN in [1,2,3,4]:
 			exRange = [1,2,3,4]
@@ -235,20 +253,23 @@ class EuphoriaGame(TwoPlayerGame):
 
 		locN = locations[1]
 
+		# print '\n locationP: ', self.locationP, '\n'
+
 		self.location[facN][locN].remove(workerVal)
 		self.locationP[facN][locN].remove(pN)
 
 		self.p[pN].retrieveWorkers(1,cost)
 
-	def workerDrop(self,faction,locationN,workerVal):
+	def workerDrop(self,player,faction,locationN,workerVal):
 
 		self.location[faction['num']][locationN].append(workerVal)
 
-		self.locationP[faction['num']][locationN].append(self.turn)
+		self.locationP[faction['num']][locationN].append(player)
 
-		# print self.turn, workerVal, faction['num'], locationN
+		# print player, workerVal, faction['num'], locationN
 
-		self.p[self.turn].workers.remove(workerVal)
+		# print self.p[player].workers, self.p[(player + 1)%2].workers ,'\n', self.p[0].workers, self.p[1].workers
+		self.p[player].workers.remove(workerVal)
 
 	def initLoc(self):
 		from itertools import combinations_with_replacement
@@ -398,19 +419,19 @@ class EuphoriaGame(TwoPlayerGame):
 
 		self.market = self.market[:6]
 
-	def verifyMoraleKnowledgeRange(self):
+	def verifyMoraleKnowledgeRange(self,player):
 
 		# Verify morale range
-		if self.p[self.turn].resources['morale'] <= 0:
-			self.p[self.turn].resources['morale'] = 1
-		elif self.p[self.turn].resources['morale'] >= 7:
-			self.p[self.turn].resources['morale'] = 6
+		if self.p[player].resources['morale'] <= 0:
+			self.p[player].resources['morale'] = 1
+		elif self.p[player].resources['morale'] >= 7:
+			self.p[player].resources['morale'] = 6
 
 		# Verify knowledge range
-		if self.p[self.turn].resources['knowledge'] <= 0:
-			self.p[self.turn].resources['knowledge'] = 1
-		elif self.p[self.turn].resources['knowledge'] >= 7:
-			self.p[self.turn].resources['knowledge'] = 6
+		if self.p[player].resources['knowledge'] <= 0:
+			self.p[player].resources['knowledge'] = 1
+		elif self.p[player].resources['knowledge'] >= 7:
+			self.p[player].resources['knowledge'] = 6
 
 	def checkRecruitFlip(self):
 		# flip second recruit if mine or allegiance is far enough
@@ -458,9 +479,10 @@ class EuphoriaGame(TwoPlayerGame):
 		import shlex
 		# Turn action number into move list
 		moveList = self.actionInterpreter(action)
-		print moveList
+		print player, self.p[player].workers, action, moveList
 
 		# moveList = self.actionInterpreter(moveList)
+		# ipsh()
 
 
 		factionNum	= moveList[1]
@@ -484,14 +506,14 @@ class EuphoriaGame(TwoPlayerGame):
 				# if normal (not worker gen) space
 				if locationNum == 0:
 					# use commodity market
-					self.useMultiUse(self.factions[factionNum],workerNum)
+					self.useMultiUse(player,self.factions[factionNum],workerNum)
 				elif locationNum in [1,2,3,4,5,6,7,8]:
 					# use exclusive spots (building markets)
-					self.useExclusive(self.factions[factionNum],
+					self.useExclusive(player,self.factions[factionNum],
 						locationNum,workerNum,cost)
 				else:
 					# use another market
-					self.useTemp(self.factions[factionNum],
+					self.useTemp(player,self.factions[factionNum],
 						locationNum,workerNum,cost,reward)
 
 					if locationNum == 12:
@@ -502,7 +524,7 @@ class EuphoriaGame(TwoPlayerGame):
 				cost = self.locationCR[factionNum][locationNum][costNum][costOp]
 				reward = self.locationCR[factionNum][locationNum][rewardNum][rewardOp]
 
-				self.useTemp(self.factions[factionNum],
+				self.useTemp(player,self.factions[factionNum],
 					locationNum,workerNum,cost,reward)
 
 		elif moveList[0] == 1:
@@ -524,9 +546,9 @@ class EuphoriaGame(TwoPlayerGame):
 				for j in range(14):
 					spacesP	= self.locationP[i][j]
 					spaces 	= self.location[i][j]
-					if self.turn in spacesP:
+					if player in spacesP:
 						for wN in reversed(range(len(spacesP))):
-							if spacesP[wN] == self.turn:
+							if spacesP[wN] == player:
 								if not paid:
 									self.retrieve([i,j],spaces[wN],player,cost)
 									paid = True
@@ -539,9 +561,9 @@ class EuphoriaGame(TwoPlayerGame):
 			for j in range(2):
 				spacesP	= self.locationP[i][j]
 				spaces 	= self.location[i][j]
-				if self.turn in spacesP:
+				if player in spacesP:
 					for wN in reversed(range(len(spacesP))):
-						if spacesP[wN] == self.turn:
+						if spacesP[wN] == player:
 							if not paid:
 								self.retrieve([i,j],spaces[wN],player,cost)
 								paid = True
@@ -581,10 +603,10 @@ class EuphoriaGame(TwoPlayerGame):
 			# for i in range(len(factionNum)):
 			# 	if i == 0:
 			# 		self.retrieve([factionNum[i],locationNum[i]],
-			# 			workerNum[i],self.turn,cost)
+			# 			workerNum[i],player,cost)
 			# 	else:
 			# 		self.retrieve([factionNum[i],locationNum[i]],
-			# 			workerNum[i],self.turn)
+			# 			workerNum[i],player)
 
 		# Check worker flipping
 		self.checkRecruitFlip()
@@ -598,8 +620,6 @@ class EuphoriaGame(TwoPlayerGame):
 			else:
 				self.winner = self.DRAW
 			self.over = True
-
-		self.turn = (self.turn + 1)%2
 
 		self.turnCounter += 1
 
@@ -663,8 +683,8 @@ class EuphoriaGame(TwoPlayerGame):
 		if genList:
 			return acList
 		else:
-			if type(action) == int:
-				return acList[action]
+			if len(action) == 1:
+				return acList[int(action[0])]
 			elif type(action) == list:
 				return acList.index(action)
 
@@ -682,10 +702,12 @@ class EuphoriaGame(TwoPlayerGame):
 		obs = zeros(469)
 		oN = 2
 
-		if self.turn == 0:
+		# for now should only be learning agent using this function
+		player = 0
+		if player == 0:
 			obs[0] = 1
 			obs[1] = 0
-		if self.turn == 1:
+		if player == 1:
 			obs[0] = 0
 			obs[1] = 1
 
@@ -841,11 +863,13 @@ class EuphoriaGame(TwoPlayerGame):
 				obs[oN] = 1
 			oN+=1
 
-		print oN
+		# print oN
 
 		acLegal 	= []
 		acList 		= self.actionInterpreter(0,True)
-		acLegal 	= self.legalMoves(self.turn)
+		acLegal 	= self.legalMoves(player)
+
+		# print '\n legal actions: ',acLegal,'\n'
 
 		acLegalCheck = []
 		for a in acList:
@@ -865,6 +889,7 @@ class EuphoriaGame(TwoPlayerGame):
 		from itertools import chain, combinations
 
 		workersOnBoard	= list(chain.from_iterable(list(chain.from_iterable(self.locationP))))
+		# print workersOnBoard
 		costNum			= 0
 		rewardNum 		= 1
 
@@ -872,7 +897,7 @@ class EuphoriaGame(TwoPlayerGame):
 		moveList = []
 		if self.p[player].workers:
 			# may place if you have some active workers
-			# for w in self.p[self.turn].workers:
+			# for w in self.p[player].workers:
 				
 			# for each worker you may do these moves
 			for i in range(3):
@@ -884,7 +909,7 @@ class EuphoriaGame(TwoPlayerGame):
 					# first market exclusive spaces
 					cost = self.locationCR[i][j][costNum][0][0]
 					market1 = self.factions[i]['market1']
-					if self.p[self.turn].resources[cost[0]] >= cost[1] and not market1:
+					if self.p[player].resources[cost[0]] >= cost[1] and not market1:
 						tempMove = [0,i,j,0,0]
 						moveList.append(tempMove)
 
@@ -893,7 +918,7 @@ class EuphoriaGame(TwoPlayerGame):
 					# second market exclusive spaces
 					cost = self.locationCR[i][j][costNum][0][0]
 					market2 = self.factions[i]['market2']
-					if self.p[self.turn].resources[cost[0]] >= cost[1] and not market2:
+					if self.p[player].resources[cost[0]] >= cost[1] and not market2:
 						tempMove = [0,i,j,0,0]
 						moveList.append(tempMove)
 
@@ -905,7 +930,7 @@ class EuphoriaGame(TwoPlayerGame):
 					market1 = self.factions[i]['market1']
 					if market1:
 						for cNum in range(len(costList)):
-							if self.checkCosts(costList[cNum]):
+							if self.checkCosts(player,costList[cNum]):
 								for rNum in range(len(rewardList)):
 									tempMove = [0,i,j,cNum,rNum]
 									moveList.append(tempMove)
@@ -917,7 +942,7 @@ class EuphoriaGame(TwoPlayerGame):
 					market2 = self.factions[i]['market2']
 					if market2:
 						for cNum in range(len(costList)):
-							if self.checkCosts(costList[cNum]):
+							if self.checkCosts(player,costList[cNum]):
 								for rNum in range(len(rewardList)):
 									tempMove = [0,i,j,cNum,rNum]
 									moveList.append(tempMove)
@@ -928,7 +953,7 @@ class EuphoriaGame(TwoPlayerGame):
 					costList = self.locationCR[i][j][costNum]
 					rewardList = self.locationCR[i][j][rewardNum]
 					for cNum in range(len(costList)):
-						if self.checkCosts(costList[cNum]):
+						if self.checkCosts(player,costList[cNum]):
 							# for rNum in range(len(rewardList)):
 							artCheck.append(True)
 						else:
@@ -942,9 +967,9 @@ class EuphoriaGame(TwoPlayerGame):
 				j = 12
 				costList = self.locationCR[i][j][costNum]
 				rewardList = self.locationCR[i][j][rewardNum]
-				if not self.mineCheck(i):
+				if not self.mineCheck(player,i):
 					for cNum in range(len(costList)):
-						if self.checkCosts(costList[cNum]):
+						if self.checkCosts(player,costList[cNum]):
 							for rNum in range(len(rewardList)):
 								tempMove = [0,i,j,cNum,rNum]
 								moveList.append(tempMove)
@@ -953,71 +978,71 @@ class EuphoriaGame(TwoPlayerGame):
 				j = 13
 				costList = self.locationCR[i][j][costNum]
 				rewardList = self.locationCR[i][j][rewardNum]
-				if self.mineCheck(i):
+				if self.mineCheck(player,i):
 					for cNum in range(len(costList)):
-						if self.checkCosts(costList[cNum]):
+						if self.checkCosts(player,costList[cNum]):
 							for rNum in range(len(rewardList)):
 								tempMove = [0,i,j,cNum,rNum]
 								moveList.append(tempMove)
 
 
-				# Icarite markets
-				i = 3
-				# can always use commodity markets
-				multiUseMove = [0,i,0,0,0]
-				moveList.append(multiUseMove)
+			# Icarite markets
+			i = 3
+			# can always use commodity markets
+			multiUseMove = [0,i,0,0,0]
+			moveList.append(multiUseMove)
 
-				if self.factions[i]['starSlots'] > 0:
-					# artifact market + 3 fixed markets
-					for j in [9]:
-						costList = self.locationCR[i][j][costNum]
-						rewardList = self.locationCR[i][j][rewardNum]
-						for cNum in range(len(costList)):
-							if self.checkCosts(costList[cNum]):
-								for rNum in range(len(rewardList)):
-									tempMove = [0,i,j,cNum,rNum]
-									moveList.append(tempMove)
-
-					j = 11
-					artCheck = []
+			if self.factions[i]['starSlots'] > 0:
+				# artifact market + 3 fixed markets
+				for j in [9]:
 					costList = self.locationCR[i][j][costNum]
 					rewardList = self.locationCR[i][j][rewardNum]
 					for cNum in range(len(costList)):
-						if self.checkCosts(costList[cNum]):
-							# for rNum in range(len(rewardList)):
-							artCheck.append(True)
-						else:
-							artCheck.append(False)
+						if self.checkCosts(player,costList[cNum]):
+							for rNum in range(len(rewardList)):
+								tempMove = [0,i,j,cNum,rNum]
+								moveList.append(tempMove)
 
-					if any(artCheck):
-						tempMove = [0,i,j,0,0]
-						moveList.append(tempMove)
+				j = 11
+				artCheck = []
+				costList = self.locationCR[i][j][costNum]
+				rewardList = self.locationCR[i][j][rewardNum]
+				for cNum in range(len(costList)):
+					if self.checkCosts(player,costList[cNum]):
+						# for rNum in range(len(rewardList)):
+						artCheck.append(True)
+					else:
+						artCheck.append(False)
+
+				if any(artCheck):
+					tempMove = [0,i,j,0,0]
+					moveList.append(tempMove)
 
 
 				# 2 fixed com. markets
-					for j in [10,12]:
-						costList = self.locationCR[i][j][costNum]
-						rewardList = self.locationCR[i][j][rewardNum]
-						for cNum in range(len(costList)):
-							if self.checkCosts(costList[cNum]):
-								for rNum in range(len(rewardList)):
-									tempMove = [0,i,j,cNum,rNum]
-									moveList.append(tempMove)
-
-				# Worker generation
-				i = 4
-				for j in [0,1]:
+				for j in [10,12]:
 					costList = self.locationCR[i][j][costNum]
 					rewardList = self.locationCR[i][j][rewardNum]
 					for cNum in range(len(costList)):
-						if self.checkCosts(costList[cNum]):
+						if self.checkCosts(player,costList[cNum]):
 							for rNum in range(len(rewardList)):
-								if self.checkWorkers(rewardList[rNum]):
-									tempMove = [0,i,j,cNum,rNum]
-									moveList.append(tempMove)
+								tempMove = [0,i,j,cNum,rNum]
+								moveList.append(tempMove)
+
+			# Worker generation
+			i = 4
+			for j in [0,1]:
+				costList = self.locationCR[i][j][costNum]
+				rewardList = self.locationCR[i][j][rewardNum]
+				for cNum in range(len(costList)):
+					if self.checkCosts(player,costList[cNum]):
+						for rNum in range(len(rewardList)):
+							if self.checkWorkers(player,rewardList[rNum]):
+								tempMove = [0,i,j,cNum,rNum]
+								moveList.append(tempMove)
 
 
-		if self.turn in workersOnBoard:
+		if player in workersOnBoard:
 			# may retrieve if you have some workers on the board
 			# find spaces that have workers and add them to list
 			# fList	= []
@@ -1027,9 +1052,9 @@ class EuphoriaGame(TwoPlayerGame):
 			# 	for j in range(14):
 			# 		spacesP	= self.locationP[i][j]
 			# 		spaces 	= self.location[i][j]
-			# 		if self.turn in spacesP:
+			# 		if player in spacesP:
 			# 			for wN in range(len(spacesP)):
-			# 				if spacesP[wN] == self.turn:
+			# 				if spacesP[wN] == player:
 			# 					fList.append(str(i+1))
 			# 					lList.append(str(j+1))
 			# 					wList.append(str(spaces[wN]))
@@ -1038,9 +1063,9 @@ class EuphoriaGame(TwoPlayerGame):
 			# for j in range(2):
 			# 	spacesP	= self.locationP[i][j]
 			# 	spaces 	= self.location[i][j]
-			# 	if self.turn in spacesP:
+			# 	if player in spacesP:
 			# 		for wN in range(len(spacesP)):
-			# 			if spacesP[wN] == self.turn:
+			# 			if spacesP[wN] == player:
 			# 				fList.append(str(i+1))
 			# 				lList.append(str(j+1))
 			# 				wList.append(str(spaces[wN]))
@@ -1068,11 +1093,11 @@ class EuphoriaGame(TwoPlayerGame):
 			# 	moveList.append(retrieveMove)
 
 			# 	# check for food, bliss removal
-			# 	if self.p[self.turn].resources['food'] >= 1:
+			# 	if self.p[player].resources['food'] >= 1:
 			# 		retrieveMove = [1,fList[i],lList[i],1,0,wList[i]]
 			# 		moveList.append(retrieveMove)
 
-			# 	if self.p[self.turn].resources['bliss'] >= 1:
+			# 	if self.p[player].resources['bliss'] >= 1:
 			# 		retrieveMove = [1,fList[i],lList[i],2,0,wList[i]]
 			# 		moveList.append(retrieveMove)
 
@@ -1081,11 +1106,11 @@ class EuphoriaGame(TwoPlayerGame):
 			moveList.append(retrieveMove)
 
 			# check for food, bliss removal
-			if self.p[self.turn].resources['food'] >= 1:
+			if self.p[player].resources['food'] >= 1:
 				retrieveMove = [1,0,0,1,0]
 				moveList.append(retrieveMove)
 
-			if self.p[self.turn].resources['bliss'] >= 1:
+			if self.p[player].resources['bliss'] >= 1:
 				retrieveMove = [1,0,0,2,0]
 				moveList.append(retrieveMove)
 
@@ -1093,20 +1118,20 @@ class EuphoriaGame(TwoPlayerGame):
 
 
 
-	def mineCheck(self,factionNum):
+	def mineCheck(self,player,factionNum):
 		# check to see if you can use the upgraded mine
 		mine = self.factions[factionNum]['mine']
-		if self.p[self.turn].resources['recruit2Active']:
-			activeRecruits = self.p[self.turn].recruits
+		if self.p[player].resources['recruit2Active']:
+			activeRecruits = self.p[player].recruits
 		else:
-			activeRecruits = [self.p[self.turn].recruits[0]]
+			activeRecruits = [self.p[player].recruits[0]]
 		if (mine >= 5) and (factionNum in activeRecruits):
 			return True
 		return False
 
-	def checkWorkers(self,reward):
+	def checkWorkers(self,player,reward):
 		# check to see if getting another worker would bump you over
-		workers = len(self.p[self.turn].workers)
+		workers = len(self.p[player].workers)
 		maxWorkers = 4
 		for r in reward:
 			if r[0] == 'worker':
@@ -1115,7 +1140,7 @@ class EuphoriaGame(TwoPlayerGame):
 			return False
 		return True
 
-	def checkCosts(self,cost):
+	def checkCosts(self,player,cost):
 		# check if all costs can be paid
 		checker = []
 		resources = dict(energy=0,water=0,food=0,bliss=0,
@@ -1124,7 +1149,7 @@ class EuphoriaGame(TwoPlayerGame):
 		for c in cost:
 			resources[c[0]]+=c[1]
 		for c in cost:
-			if self.p[self.turn].resources[c[0]] >= resources[c[0]]:
+			if self.p[player].resources[c[0]] >= resources[c[0]]:
 				checker.append(True)
 			else:
 				checker.append(False)

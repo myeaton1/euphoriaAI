@@ -32,14 +32,18 @@ class euActionValueNetwork(Module, ActionValueInterface):
 
     def getMaxAction(self, state):
         """ Return the action with the maximal value for the given state. """
-        moveRanks   = argsort(self.getActionValues(state))[::-1]
-        print len(moveRanks), moveRanks
+        moveRanks   = argsort(self.getActionValues(state),None)[::-1]
+        # print self.getActionValues(state)
+        # print state
+        # print len(moveRanks), moveRanks
         legalMoves  = state[-self.numActions:]
-        print legalMoves
+        # print '\n',legalMoves,'\n'
+
 
         for m in moveRanks:
-            print m
+            # print m, legalMoves[m]
             if legalMoves[m] == 1:
+                # print m
                 return m
 
     def getActionValues(self, state):

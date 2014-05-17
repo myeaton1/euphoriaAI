@@ -51,8 +51,15 @@ class EuphoriaLearningAgent(LoggingAgent):
 
         self.lastaction = self.module.activate(self.lastobs)
 
-        if self.learning:
-            self.lastaction = self.learner.explore(self.lastobs, self.lastaction)
+        # if self.learning:
+        #     legalList = self.env.legalMoves(self.color)
+        #     legalMove = False
+        #     while legalMove == False:
+        #         explAction = self.learner.explore(self.lastobs, self.lastaction)
+        #         formatEA = self.env.actionInterpreter(explAction)
+        #         if explAction in legalMove:
+        #             self.lastaction = explAction
+        #             legalMove = True
 
         return self.lastaction
 
